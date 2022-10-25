@@ -2,6 +2,11 @@
 
 批量生成钱包，并交易一笔数据上链
 
+## 安装
+
+https://www.rust-lang.org/tools/install
+
+## 使用
 
 ```
 cargo run $phrase $object_id $count
