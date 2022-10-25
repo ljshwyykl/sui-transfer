@@ -1,0 +1,17 @@
+[package]
+edition = "2021"
+name = "sui-airdrop"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.64"
+async-trait = "0.1.57"
+sui-sdk = {git = "https://github.com/MystenLabs/sui"}
+tokio = "1.20.1"
+chrono = "0.4"
+
+[dev-dependencies]
+sha3 = "0.10.4"
+tempfile = "3.3.0"
