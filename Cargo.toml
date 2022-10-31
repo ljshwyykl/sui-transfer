@@ -8,10 +8,16 @@ version = "0.1.0"
 [dependencies]
 anyhow = "1.0.64"
 async-trait = "0.1.57"
-sui-sdk = {git = "https://github.com/MystenLabs/sui"}
-tokio = "1.20.1"
+# sui-sdk = { git = "https://github.com/MystenLabs/sui", branch = "devnet" }
 chrono = "0.4"
+serde_json = "1.0.87"
+sui-sdk = {git = "https://github.com/MystenLabs/sui"}
+sui-keys = {git = "https://github.com/MystenLabs/sui"}
+tokio = "1.20.1"
 
 [dev-dependencies]
 sha3 = "0.10.4"
 tempfile = "3.3.0"
+
+[patch.crates-io]
+sqlx = {git = "https://github.com/huitseeker/sqlx", branch = "update_libsqlite3"}
