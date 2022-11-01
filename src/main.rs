@@ -25,23 +25,23 @@ async fn main() -> Result<(), anyhow::Error> {
     let args: Vec<String> = env::args().collect();
 
     println!("{}", args.len());
-    if args.len() != 3 {
+    if args.len() != 4 {
         panic!("args error")
     }
 
     let phrase = &args[1];
-    // let object_id = &args[2];
+    let object_id = &args[2];
 
-    let total = &args[2].to_string().parse::<usize>().unwrap();
+    let total = &args[3].to_string().parse::<usize>().unwrap();
 
     for _i in 0..*total {
-        handle(phrase).await?;
+        handle(phrase, object_id).await?;
     }
 
     Ok(())
 }
 
-async fn handle(phrase_from: &str) -> Result<(), anyhow::Error> {
+async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error> {
     let sui = SuiClient::new_rpc_client("https://fullnode.devnet.sui.io:443", None).await?;
 
     let temp_dir = env::temp_dir();
@@ -72,7 +72,8 @@ async fn handle(phrase_from: &str) -> Result<(), anyhow::Error> {
 
     println!("from_address:{}", from_address);
 
-    let gas_object_id = get_first_object_id(from_address, &sui).await?;
+    //let gas_object_id = get_first_object_id(from_address, &sui).await?;
+    let gas_object_id = ObjectID::from_str(&object_id)?;
     println!("gas_object_id:{}", gas_object_id);
 
     // let gas_object_id = object_id;
