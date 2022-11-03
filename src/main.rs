@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use std::{env, fs};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
-use sui_sdk::types::crypto::SignatureScheme;
+use sui_types::crypto::SignatureScheme;
 use sui_sdk::types::messages::Transaction;
 use sui_sdk::{
     json::SuiJsonValue,
@@ -42,7 +42,7 @@ async fn main() -> Result<(), anyhow::Error> {
 }
 
 async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error> {
-    let sui = SuiClient::new_rpc_client("https://fullnode.devnet.sui.io:443", None).await?;
+    let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None).await?;
 
     let temp_dir = env::temp_dir();
     let keystore_path = temp_dir.as_path().join("sui.keystore");
@@ -159,7 +159,7 @@ async fn create_nft(
         .quorum_driver()
         .execute_transaction(
             Transaction::new(transfer_tx, signature).verify()?,
-            Some(ExecuteTransactionRequestType::ImmediateReturn),
+            Some(ExecuteTransactionRequestType::WaitForEffectsCert),
         )
         .await?;
 
@@ -191,6 +191,7 @@ async fn get_first_object_id(
         .first()
         .unwrap()
         .object_id;
+
     println!("{}", object_id);
     // println!("{:?}", objects);
     Ok(object_id)
@@ -199,7 +200,7 @@ async fn get_first_object_id(
 #[tokio::test]
 
 async fn test_get_first_object_id() -> Result<(), anyhow::Error> {
-    let sui = SuiClient::new_rpc_client("https://fullnode.devnet.sui.io:443", None).await?;
+    let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None).await?;
     let address = SuiAddress::from_str("0x004230a90f543a4993ea3b15954be615f14a71b3")?;
     let object_refs = sui.read_api().get_objects_owned_by_address(address).await?;
 
