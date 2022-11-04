@@ -1,15 +1,17 @@
 use chrono::Local;
 use serde_json::json;
-use sui_sdk::rpc_types::SuiObjectInfo;
+
+#[allow(unused_imports)]
+use sui_sdk::rpc_types::{SuiEvent, SuiObjectInfo};
+use sui_sdk::types::event::BalanceChangeType;
 
 use std::io::Write;
 
-#[warn(unused_imports)]
+#[allow(unused_imports)]
 use std::str::FromStr;
 
 use std::{env, fs};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
-use sui_types::crypto::SignatureScheme;
 use sui_sdk::types::messages::Transaction;
 use sui_sdk::{
     json::SuiJsonValue,
@@ -19,6 +21,7 @@ use sui_sdk::{
     },
     SuiClient,
 };
+use sui_types::crypto::SignatureScheme;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -88,30 +91,134 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
     let signature = keystore2.sign(&from_address, &transfer_tx.to_bytes())?;
 
     // Execute the transaction
-    let transaction_response = sui
+    let response = sui
         .quorum_driver()
         .execute_transaction(
             Transaction::new(transfer_tx, signature).verify()?,
-            Some(ExecuteTransactionRequestType::ImmediateReturn),
+            Some(ExecuteTransactionRequestType::WaitForEffectsCert),
         )
         .await?;
+    // println!("transfser {:#?}", response.effects.unwrap().events);
+    // let events: Vec<SuiEvent::CoinBalanceChange> = response.effects.unwrap().events;
 
-    println!("transfser {:?}", transaction_response);
+    let events = response.effects.unwrap().events;
 
-    let gas_object_id_2 = get_first_object_id(recipient, &sui).await?;
-    println!("recipient address:{}", gas_object_id_2);
+    /*
+    match events {
+        // SuiEvent::MoveEvent { package_id, transaction_module, sender, type_, fields, bcs } => todo!(),
+        // SuiEvent::Publish { sender, package_id } => todo!(),
+        // SuiEvent::EpochChange(_) => todo!(),
+        // SuiEvent::Checkpoint(_) => todo!(),
+        // SuiEvent::TransferObject { package_id, transaction_module, sender, recipient, object_type, object_id, version } => todo!(),
+        // SuiEvent::MutateObject { package_id, transaction_module, sender, object_type, object_id, version } => todo!(),
+        // SuiEvent::DeleteObject { package_id, transaction_module, sender, object_id, version } => todo!(),
+        // SuiEvent::NewObject { package_id, transaction_module, sender, recipient, object_type, object_id, version } => todo!(),
+        SuiEvent::CoinBalanceChange {
+            package_id,
+            transaction_module,
+            sender,
+            change_type,
+            owner,
+            coin_type,
+            coin_object_id,
+            version,
+            amount,
+        } => {
+            println!("{}", coin_type)
+        }
 
-    create_nft(
-        recipient,
-        ObjectID::from(SUI_FRAMEWORK_ADDRESS),
-        "devnet_nft",
-        "mint",
-        Some(gas_object_id_2),
-        10000,
-        keystore,
-        &sui,
-    )
-    .await?;
+        _ => {
+            println!("other")
+        }
+    }
+
+
+    */
+    let events1 = events
+        .iter()
+        .filter(|s| match s {
+            SuiEvent::CoinBalanceChange {
+                package_id: _,
+                transaction_module: _,
+                sender: _,
+                change_type,
+                owner: _,
+                coin_type: _,
+                coin_object_id: _,
+                version: _,
+                amount: _,
+            } => change_type == &BalanceChangeType::Receive,
+
+            _ => {
+                return false;
+            }
+        })
+        .collect::<Vec<_>>();
+
+    if let SuiEvent::CoinBalanceChange {
+        package_id: _,
+        transaction_module: _,
+        sender: _,
+        change_type: _,
+        owner: _,
+        coin_type: _,
+        coin_object_id,
+        version: _,
+        amount: _,
+    } = events1[0]
+    {
+        // println!("{}", coin_object_id)
+
+        create_nft(
+            recipient,
+            ObjectID::from(SUI_FRAMEWORK_ADDRESS),
+            "devnet_nft",
+            "mint",
+            Some(*coin_object_id),
+            10000,
+            keystore,
+            &sui,
+        )
+        .await?;
+    }
+
+    // let gas_object_id_2 = events.iter().filter(|s| {
+    //     if let SuiEvent::CoinBalanceChange {
+    //         package_id,
+    //         transaction_module,
+    //         sender,
+    //         change_type,
+    //         owner,
+    //         coin_type,
+    //         coin_object_id,
+    //         version,
+    //         amount,
+    //     } = s {
+    //         change_type == "Receive"
+    //     } else {
+    //         None
+    //     }
+    // });
+    // .first()
+    // .unwrap()
+    // .coin_object_id;
+
+    // println!("gas_object_id_2 {:#?}", gas_object_id_2);
+
+    // let gas_object_id_2 = get_first_object_id(recipient, &sui).await?;
+    // println!("recipient address:{}", gas_object_id_2);
+
+    // create_nft(
+    //     recipient,
+    //     ObjectID::from(SUI_FRAMEWORK_ADDRESS),
+    //     "devnet_nft",
+    //     "mint",
+    //     Some(gas_object_id_2),
+    //     10000,
+    //     keystore,
+    //     &sui,
+    // )
+    // .await?;
 
     Ok(())
 }
@@ -175,6 +282,7 @@ async fn create_nft(
     Ok(())
 }
 
+/*
 async fn get_first_object_id(
     address: SuiAddress,
     sui: &SuiClient,
@@ -197,6 +305,7 @@ async fn get_first_object_id(
     Ok(object_id)
 }
 
+*/
 #[tokio::test]
 
 async fn test_get_first_object_id() -> Result<(), anyhow::Error> {
