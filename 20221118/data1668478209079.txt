@@ -1,0 +1,2 @@
+allow job chest common world hotel picture range salad property way fame
+0x5a9a84eb4c1a1867a2d807d1ac608997f8b023d6

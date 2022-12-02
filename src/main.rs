@@ -1,11 +1,10 @@
 use chrono::Local;
 use serde_json::json;
 
+use std::io::Write;
 #[allow(unused_imports)]
 use sui_sdk::rpc_types::{SuiEvent, SuiObjectInfo};
 use sui_sdk::types::event::BalanceChangeType;
-
-use std::io::Write;
 
 #[allow(unused_imports)]
 use std::str::FromStr;
@@ -27,7 +26,7 @@ use sui_types::crypto::SignatureScheme;
 async fn main() -> Result<(), anyhow::Error> {
     let args: Vec<String> = env::args().collect();
 
-    println!("{}", args.len());
+    // println!("{}", args.len());
     if args.len() != 4 {
         panic!("args error")
     }
@@ -37,8 +36,9 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let total = &args[3].to_string().parse::<usize>().unwrap();
 
-    for _i in 0..*total {
+    for i in 0..*total {
         handle(phrase, object_id).await?;
+        println!("{}", i)
     }
 
     Ok(())
@@ -50,10 +50,10 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
     let temp_dir = env::temp_dir();
     let keystore_path = temp_dir.as_path().join("sui.keystore");
     let mut keystore = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
-    let (address, phrase, scheme) = keystore
+    let (address, phrase, _scheme) = keystore
         .generate_new_key(SignatureScheme::ED25519, None)
         .unwrap();
-    println!("address:{},phrase:{},scheme:{:?}", address, phrase, scheme);
+    // println!("address:{},phrase:{},scheme:{:?}", address, phrase, scheme);
 
     fs::create_dir_all("address").unwrap();
 
@@ -65,7 +65,7 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
     file.write_all("\n".as_bytes()).expect("write failed");
     file.write_all(address.to_string().as_bytes())
         .expect("write failed");
-    println!("data written to file");
+    // println!("data written to file");
 
     let mut keystore2 = Keystore::from(FileBasedKeystore::new(&keystore_path).unwrap());
 
@@ -73,67 +73,52 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
         .import_from_mnemonic(&phrase_from, SignatureScheme::ED25519, None)
         .unwrap();
 
-    println!("from_address:{}", from_address);
+    // println!("from_address:{}", from_address);
 
     //let gas_object_id = get_first_object_id(from_address, &sui).await?;
     let gas_object_id = ObjectID::from_str(&object_id)?;
-    println!("gas_object_id:{}", gas_object_id);
+    // println!("gas_object_id:{}", gas_object_id);
 
     // let gas_object_id = object_id;
 
     let recipient = address;
 
+    // println!("recipient:{}", recipient);
+    // let transfer_tx = sui
+    //     .transaction_builder()
+    //     .transfer_sui(from_address, gas_object_id, 1000, recipient, Some(30000))
+    //     .await?;
+
+    // Create a sui transfer transaction
     let transfer_tx = sui
         .transaction_builder()
         .transfer_sui(from_address, gas_object_id, 1000, recipient, Some(30000))
         .await?;
 
-    let signature = keystore2.sign(&from_address, &transfer_tx.to_bytes())?;
+    let signature = keystore.sign(&from_address, &transfer_tx.to_bytes())?;
 
     // Execute the transaction
     let response = sui
         .quorum_driver()
         .execute_transaction(
             Transaction::new(transfer_tx, signature).verify()?,
-            Some(ExecuteTransactionRequestType::WaitForEffectsCert),
+            Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
         .await?;
-    // println!("transfser {:#?}", response.effects.unwrap().events);
+
+    // println!("{:#?}", response);
+    // let signature = keystore2.sign(&from_address, &transfer_tx)?;
+
+    // // Execute the transaction
+    // let response = sui
+    //     .quorum_driver()
+    //     .execute_transaction(Transaction::from_data(transfer_tx, signature))
+    //     .await?;
+    // // println!("transfser {:#?}", response);
     // let events: Vec<SuiEvent::CoinBalanceChange> = response.effects.unwrap().events;
 
     let events = response.effects.unwrap().events;
 
-    /*
-    match events {
-        // SuiEvent::MoveEvent { package_id, transaction_module, sender, type_, fields, bcs } => todo!(),
-        // SuiEvent::Publish { sender, package_id } => todo!(),
-        // SuiEvent::EpochChange(_) => todo!(),
-        // SuiEvent::Checkpoint(_) => todo!(),
-        // SuiEvent::TransferObject { package_id, transaction_module, sender, recipient, object_type, object_id, version } => todo!(),
-        // SuiEvent::MutateObject { package_id, transaction_module, sender, object_type, object_id, version } => todo!(),
-        // SuiEvent::DeleteObject { package_id, transaction_module, sender, object_id, version } => todo!(),
-        // SuiEvent::NewObject { package_id, transaction_module, sender, recipient, object_type, object_id, version } => todo!(),
-        SuiEvent::CoinBalanceChange {
-            package_id,
-            transaction_module,
-            sender,
-            change_type,
-            owner,
-            coin_type,
-            coin_object_id,
-            version,
-            amount,
-        } => {
-            println!("{}", coin_type)
-        }
-
-        _ => {
-            println!("other")
-        }
-    }
-
-
-    */
     let events1 = events
         .iter()
         .filter(|s| match s {
@@ -154,6 +139,7 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
             }
         })
         .collect::<Vec<_>>();
+    // println!("events1 {:#?}", events1);
 
     if let SuiEvent::CoinBalanceChange {
         package_id: _,
@@ -167,7 +153,7 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
         amount: _,
     } = events1[0]
     {
-        // println!("{}", coin_object_id)
+        // println!("{}", coin_object_id);
 
         create_nft(
             recipient,
@@ -181,44 +167,6 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
         )
         .await?;
     }
-
-    // let gas_object_id_2 = events.iter().filter(|s| {
-    //     if let SuiEvent::CoinBalanceChange {
-    //         package_id,
-    //         transaction_module,
-    //         sender,
-    //         change_type,
-    //         owner,
-    //         coin_type,
-    //         coin_object_id,
-    //         version,
-    //         amount,
-    //     } = s {
-    //         change_type == "Receive"
-    //     } else {
-    //         None
-    //     }
-    // });
-    // .first()
-    // .unwrap()
-    // .coin_object_id;
-
-    // println!("gas_object_id_2 {:#?}", gas_object_id_2);
-
-    // let gas_object_id_2 = get_first_object_id(recipient, &sui).await?;
-    // println!("recipient address:{}", gas_object_id_2);
-
-    // create_nft(
-    //     recipient,
-    //     ObjectID::from(SUI_FRAMEWORK_ADDRESS),
-    //     "devnet_nft",
-    //     "mint",
-    //     Some(gas_object_id_2),
-    //     10000,
-    //     keystore,
-    //     &sui,
-    // )
-    // .await?;
 
     Ok(())
 }
@@ -262,7 +210,7 @@ async fn create_nft(
     let signature = keystore.sign(&my_address, &transfer_tx.to_bytes())?;
 
     // Execute the transaction
-    let transaction_response = sui
+    sui
         .quorum_driver()
         .execute_transaction(
             Transaction::new(transfer_tx, signature).verify()?,
@@ -270,7 +218,8 @@ async fn create_nft(
         )
         .await?;
 
-    println!("{:?}", transaction_response);
+    // println!("{:?}", transaction_response);
+
     // let nft_id = effects
     //     .created
     //     .first()
@@ -278,7 +227,7 @@ async fn create_nft(
     //     .reference
     //     .object_id;
 
-    // println!("{:?}", transaction_response);
+    // // println!("{:?}", transaction_response);
     Ok(())
 }
 
@@ -300,8 +249,8 @@ async fn get_first_object_id(
         .unwrap()
         .object_id;
 
-    println!("{}", object_id);
-    // println!("{:?}", objects);
+    // println!("{}", object_id);
+    // // println!("{:?}", objects);
     Ok(object_id)
 }
 
@@ -318,7 +267,7 @@ async fn test_get_first_object_id() -> Result<(), anyhow::Error> {
         .filter(|s| s.type_ == "0x2::coin::Coin<0x2::sui::SUI>")
         .collect();
 
-    println!("o2 {:#?}", o2);
+    // println!("o2 {:#?}", o2);
     assert_eq!(3, 3);
 
     Ok(())
