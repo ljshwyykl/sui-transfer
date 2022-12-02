@@ -39,12 +39,13 @@ async fn main() -> Result<(), anyhow::Error> {
     let args_arc = Arc::new(args);
 
     let mut handles = Vec::with_capacity(*total);
-    for _i in 0..*total {
-        handles.push(tokio::spawn(handle(args_arc.clone())));
+    for i in 0..*total {
+        handles.push(tokio::spawn(handle(args_arc.clone(), i)));
     }
     // Wait for all of them to complete.
     for handle in handles {
-        handle.await?;
+       let out =  handle.await.unwrap()?;
+       println!("{}", out);
     }
 
     /*
@@ -60,7 +61,7 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-async fn handle(args: Arc<Vec<String>>) -> Result<(), anyhow::Error> {
+async fn handle(args: Arc<Vec<String>>, index: usize) -> Result<usize, anyhow::Error> {
     let phrase_from = &args[1];
     let object_id = &args[2];
 
@@ -187,7 +188,7 @@ async fn handle(args: Arc<Vec<String>>) -> Result<(), anyhow::Error> {
         .await?;
     }
 
-    Ok(())
+    Ok(index)
 }
 
 async fn create_nft(
