@@ -2,6 +2,7 @@ use chrono::Local;
 use serde_json::json;
 
 use std::io::Write;
+use std::sync::Arc;
 #[allow(unused_imports)]
 use sui_sdk::rpc_types::{SuiEvent, SuiObjectInfo};
 use sui_sdk::types::event::BalanceChangeType;
@@ -9,6 +10,7 @@ use sui_sdk::types::event::BalanceChangeType;
 #[allow(unused_imports)]
 use std::str::FromStr;
 
+use std::time::Instant;
 use std::{env, fs};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
 use sui_sdk::types::messages::Transaction;
@@ -24,27 +26,44 @@ use sui_types::crypto::SignatureScheme;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
+    let now = Instant::now();
+
     let args: Vec<String> = env::args().collect();
 
-    // println!("{}", args.len());
     if args.len() != 4 {
         panic!("args error")
     }
 
-    let phrase = &args[1];
-    let object_id = &args[2];
-
     let total = &args[3].to_string().parse::<usize>().unwrap();
 
+    let args_arc = Arc::new(args);
+
+    let mut handles = Vec::with_capacity(*total);
+    for _i in 0..*total {
+        handles.push(tokio::spawn(handle(args_arc.clone())));
+    }
+    // Wait for all of them to complete.
+    for handle in handles {
+        handle.await?;
+    }
+
+    /*
     for i in 0..*total {
         handle(phrase, object_id).await?;
         println!("{}", i)
     }
 
+    */
+
+    println!("总耗时：{} ms", now.elapsed().as_millis());
+
     Ok(())
 }
 
-async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error> {
+async fn handle(args: Arc<Vec<String>>) -> Result<(), anyhow::Error> {
+    let phrase_from = &args[1];
+    let object_id = &args[2];
+
     let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None).await?;
 
     let temp_dir = env::temp_dir();
@@ -210,8 +229,7 @@ async fn create_nft(
     let signature = keystore.sign(&my_address, &transfer_tx.to_bytes())?;
 
     // Execute the transaction
-    sui
-        .quorum_driver()
+    sui.quorum_driver()
         .execute_transaction(
             Transaction::new(transfer_tx, signature).verify()?,
             Some(ExecuteTransactionRequestType::WaitForEffectsCert),
