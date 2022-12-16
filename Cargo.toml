@@ -11,9 +11,9 @@ async-trait = "0.1.57"
 # sui-sdk = { git = "https://github.com/MystenLabs/sui", branch = "devnet" }
 chrono = "0.4"
 serde_json = "1.0.87"
-sui-keys = {git = "https://github.com/MystenLabs/sui"}
-sui-sdk = {git = "https://github.com/MystenLabs/sui"}
-sui-types = {git = "https://github.com/MystenLabs/sui"}
+sui-keys = {git = "https://github.com/MystenLabs/sui" , branch = "devnet" }
+sui-sdk = {git = "https://github.com/MystenLabs/sui", branch = "devnet"}
+sui-types = {git = "https://github.com/MystenLabs/sui", branch = "devnet"}
 # tokio = "1.20.1"
 tokio = { version = "1.22.0", features = ["rt-multi-thread", "macros"] }
 

@@ -9,7 +9,7 @@ use sui_sdk::types::event::BalanceChangeType;
 
 #[allow(unused_imports)]
 use std::str::FromStr;
-
+use tokio::time::{sleep, Duration};
 use std::time::Instant;
 use std::{env, fs};
 use sui_keys::keystore::{AccountKeystore, FileBasedKeystore, Keystore};
@@ -30,9 +30,16 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let args: Vec<String> = env::args().collect();
 
+    let phrase = &args[1];
+    let object_id = &args[2];
+
     if args.len() != 4 {
         panic!("args error")
     }
+
+    let total = &args[3].to_string().parse::<usize>().unwrap();
+
+    /*
 
     let total = &args[3].to_string().parse::<usize>().unwrap();
 
@@ -46,26 +53,27 @@ async fn main() -> Result<(), anyhow::Error> {
     for handle in handles {
        let out =  handle.await.unwrap()?;
        println!("{}", out);
+       // sleep(Duration::from_millis(1000)).await;
     }
 
-    /*
+    */
+
+
     for i in 0..*total {
         handle(phrase, object_id).await?;
         println!("{}", i)
     }
 
-    */
 
     println!("总耗时：{} ms", now.elapsed().as_millis());
 
     Ok(())
 }
 
-async fn handle(args: Arc<Vec<String>>, index: usize) -> Result<usize, anyhow::Error> {
-    let phrase_from = &args[1];
-    let object_id = &args[2];
+async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error> {
 
-    let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None).await?;
+    let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None, None).await?;
+    // let sui = SuiClient::new("https://fullnode.testnet.sui.io:443", None, None).await?;
 
     let temp_dir = env::temp_dir();
     let keystore_path = temp_dir.as_path().join("sui.keystore");
@@ -121,7 +129,7 @@ async fn handle(args: Arc<Vec<String>>, index: usize) -> Result<usize, anyhow::E
     let response = sui
         .quorum_driver()
         .execute_transaction(
-            Transaction::new(transfer_tx, signature).verify()?,
+            Transaction::from_data(transfer_tx, signature).verify()?,
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
         .await?;
@@ -185,10 +193,10 @@ async fn handle(args: Arc<Vec<String>>, index: usize) -> Result<usize, anyhow::E
             keystore,
             &sui,
         )
-        .await?;
+            .await?;
     }
 
-    Ok(index)
+    Ok(())
 }
 
 async fn create_nft(
@@ -232,7 +240,7 @@ async fn create_nft(
     // Execute the transaction
     sui.quorum_driver()
         .execute_transaction(
-            Transaction::new(transfer_tx, signature).verify()?,
+            Transaction::from_data(transfer_tx, signature).verify()?,
             Some(ExecuteTransactionRequestType::WaitForEffectsCert),
         )
         .await?;
@@ -275,9 +283,8 @@ async fn get_first_object_id(
 
 */
 #[tokio::test]
-
 async fn test_get_first_object_id() -> Result<(), anyhow::Error> {
-    let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None).await?;
+    let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None, None).await?;
     let address = SuiAddress::from_str("0x004230a90f543a4993ea3b15954be615f14a71b3")?;
     let object_refs = sui.read_api().get_objects_owned_by_address(address).await?;
 
