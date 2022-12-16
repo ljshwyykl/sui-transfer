@@ -60,7 +60,15 @@ async fn main() -> Result<(), anyhow::Error> {
 
 
     for i in 0..*total {
-        handle(phrase, object_id).await?;
+        loop {
+            match handle(phrase, object_id).await {
+                Ok(_) => {
+                    break;
+                }
+                Err(err) => {}
+            };
+        }
+
         println!("{}", i)
     }
 
@@ -71,7 +79,6 @@ async fn main() -> Result<(), anyhow::Error> {
 }
 
 async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error> {
-
     let sui = SuiClient::new("https://fullnode.devnet.sui.io:443", None, None).await?;
     // let sui = SuiClient::new("https://fullnode.testnet.sui.io:443", None, None).await?;
 
