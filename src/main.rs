@@ -65,7 +65,9 @@ async fn main() -> Result<(), anyhow::Error> {
                 Ok(_) => {
                     break;
                 }
-                Err(err) => {}
+                Err(err) => {
+                    println!("error: {:?}",err)
+                }
             };
         }
 
