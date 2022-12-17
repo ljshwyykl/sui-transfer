@@ -23,6 +23,7 @@ use sui_sdk::{
     SuiClient,
 };
 use sui_types::crypto::SignatureScheme;
+use sui_types::intent::Intent;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -132,13 +133,13 @@ async fn handle(phrase_from: &str, object_id: &str) -> Result<(), anyhow::Error>
         .transfer_sui(from_address, gas_object_id, 1000, recipient, Some(30000))
         .await?;
 
-    let signature = keystore.sign(&from_address, &transfer_tx.to_bytes())?;
+    let signature = keystore.sign_secure(&from_address, &transfer_tx, Intent::default())?;
 
     // Execute the transaction
     let response = sui
         .quorum_driver()
         .execute_transaction(
-            Transaction::from_data(transfer_tx, signature).verify()?,
+            Transaction::from_data(transfer_tx,Intent::default(), signature).verify()?,
             Some(ExecuteTransactionRequestType::WaitForLocalExecution),
         )
         .await?;
@@ -244,12 +245,12 @@ async fn create_nft(
         )
         .await?;
 
-    let signature = keystore.sign(&my_address, &transfer_tx.to_bytes())?;
+    let signature = keystore.sign_secure(&my_address, &transfer_tx, Intent::default())?;
 
     // Execute the transaction
     sui.quorum_driver()
         .execute_transaction(
-            Transaction::from_data(transfer_tx, signature).verify()?,
+            Transaction::from_data(transfer_tx, Intent::default(),signature).verify()?,
             Some(ExecuteTransactionRequestType::WaitForEffectsCert),
         )
         .await?;
